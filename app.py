@@ -3,43 +3,49 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 import json
+import os
+import urllib.request
 from PIL import Image
 
-st.set_page_config(page_title="Skin Disease Detection", page_icon="🔬")
+st.set_page_config(page_title="Skin Disease Detection")
 
 st.title("Skin Disease Detection Using CNN")
-st.write("Upload a skin image to see the model's prediction.")
+st.write("Upload a skin image for prediction.")
+
+MODEL_PATH = "skin_disease_cnn.keras"
+
+MODEL_URL = "https://github.com/KAINATIMRAN2007/Skin-Disease-Detection-CNN/releases/download/v1.0/skin_disease_cnn.keras"
 
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("skin_disease_cnn.keras")
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner("Downloading CNN model..."):
+            urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+    return tf.keras.models.load_model(MODEL_PATH)
 
 model = load_model()
 
-with open("class_names.json", "r") as file:
-    class_names = json.load(file)
+with open("class_names.json", "r") as f:
+    class_names = json.load(f)
 
 uploaded_file = st.file_uploader(
-    "Upload a skin image",
+    "Upload skin image",
     type=["jpg", "jpeg", "png"]
 )
 
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image")
+    st.image(image)
 
     image = image.resize((128, 128))
     image_array = np.array(image) / 255.0
     image_array = np.expand_dims(image_array, axis=0)
 
     prediction = model.predict(image_array)
-    predicted_index = np.argmax(prediction[0])
+    index = np.argmax(prediction[0])
 
-    st.subheader("Model Prediction")
-    st.write(class_names[predicted_index])
-    st.write(f"Model confidence: {prediction[0][predicted_index] * 100:.2f}%")
+    st.subheader("Prediction")
+    st.write(class_names[index])
+    st.write(f"Confidence: {prediction[0][index] * 100:.2f}%")
 
-st.warning(
-    "Educational demonstration only. This model is not a medical "
-    "diagnostic tool. Consult a qualified healthcare professional."
-)
+st.warning("Educational use only. Not a medical diagnosis.")
